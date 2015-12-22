@@ -39,7 +39,7 @@ defmodule Mix.Tasks.Test.Watch do
   def handle_info({_pid, {:fs, :file_event}, {path, _event}}, state) do
     path = to_string(path)
     if M.Path.watching?(path) do
-      Code.load_file(path)
+      reload_path(path)
       run_tests(state.args)
     end
     {:noreply, state}
@@ -51,17 +51,22 @@ defmodule Mix.Tasks.Test.Watch do
   defp run_tests(args) do
     IO.puts "\nRunning tests..."
 
-    project = Mix.Project.config
-    test_paths = project[:test_paths] || ["test"]
-    test_files = Mix.Utils.extract_files(test_paths, "*") |> Enum.map(&Path.expand/1)
-
-    :elixir_code_server.cast({:unload_files, test_files})
     ["loadpaths", "deps.loadpaths", "test"] |> Enum.map(&Mix.Task.reenable/1)
+
+    config = Application.get_all_env(:watch)
+    if Keyword.get(config, :clear_screen, nil) do
+      IO.write(IO.ANSI.clear() <> IO.ANSI.home())
+    end
+
+    # Reconfigure the :test env (and activate its config)
     Mix.env(:test)
-    Mix.Config.read!("/Users/carsten/Code/ex/fargo/config/test.exs")
+    Mix.Config.read!(Path.expand("config/test.exs"))
     |> Mix.Config.persist
     Mix.Task.run("test")
-    :elixir_config.put(:at_exit, [])
+    
+    # TODO(casio): Really?
+    # As the configuration will grow indefinitly, we cut it after each run
+    # :elixir_config.put(:at_exit, [])
 
     # :ok = args |> M.Command.build |> M.Command.exec
     # flush
@@ -75,5 +80,24 @@ defmodule Mix.Tasks.Test.Watch do
       _       -> flush
       after 0 -> :ok
     end
+  end
+
+  
+  @spec reload_path(String.t) :: :ok
+
+  defp reload_path(path) do
+    unload_test_files()
+    Code.load_file(path)
+  end
+
+
+  @spec unload_test_files :: :ok
+
+  defp unload_test_files do
+    project = Mix.Project.config
+    test_paths = project[:test_paths] || ["test"]
+    Mix.Utils.extract_files(test_paths, "*") 
+    |> Enum.map(&Path.expand/1)
+    |> Code.unload_files
   end
 end
