@@ -58,10 +58,11 @@ defmodule Mix.Tasks.Test.Watch do
     :elixir_code_server.cast({:unload_files, test_files})
     ["loadpaths", "deps.loadpaths", "test"] |> Enum.map(&Mix.Task.reenable/1)
     Mix.env(:test)
+    Mix.Config.read!("/Users/carsten/Code/ex/fargo/config/test.exs")
+    |> Mix.Config.persist
     Mix.Task.run("test")
     :elixir_config.put(:at_exit, [])
 
-    # Agent.update( agent, fn x -> %{ x | not_running_tests?: true } end )
     # :ok = args |> M.Command.build |> M.Command.exec
     # flush
     # :ok
