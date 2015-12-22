@@ -37,8 +37,10 @@ defmodule Mix.Tasks.Test.Watch do
   @spec handle_info({pid, fs_event, fs_details}, %{}) :: {:noreply, %{}}
 
   def handle_info({_pid, {:fs, :file_event}, {path, _event}}, state) do
-    if M.Path.watching?( to_string path ) do
-      run_tests( state.args )
+    path = to_string(path)
+    if M.Path.watching?(path) do
+      Code.load_file(path)
+      run_tests(state.args)
     end
     {:noreply, state}
   end
@@ -48,9 +50,21 @@ defmodule Mix.Tasks.Test.Watch do
 
   defp run_tests(args) do
     IO.puts "\nRunning tests..."
-    :ok = args |> M.Command.build |> M.Command.exec
-    flush
-    :ok
+
+    project = Mix.Project.config
+    test_paths = project[:test_paths] || ["test"]
+    test_files = Mix.Utils.extract_files(test_paths, "*") |> Enum.map(&Path.expand/1)
+
+    :elixir_code_server.cast({:unload_files, test_files})
+    ["loadpaths", "deps.loadpaths", "test"] |> Enum.map(&Mix.Task.reenable/1)
+    Mix.env(:test)
+    Mix.Task.run("test")
+    :elixir_config.put(:at_exit, [])
+
+    # Agent.update( agent, fn x -> %{ x | not_running_tests?: true } end )
+    # :ok = args |> M.Command.build |> M.Command.exec
+    # flush
+    # :ok
   end
 
   @spec flush :: :ok
