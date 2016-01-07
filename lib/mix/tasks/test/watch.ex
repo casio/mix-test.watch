@@ -53,7 +53,7 @@ defmodule Mix.Tasks.Test.Watch do
 
     ["loadpaths", "deps.loadpaths", "test"] |> Enum.map(&Mix.Task.reenable/1)
 
-    config = Application.get_all_env(:watch)
+    config = Application.get_all_env(:mix_test_watch)
     if Keyword.get(config, :clear_screen, nil) do
       IO.write(IO.ANSI.clear() <> IO.ANSI.home())
     end
@@ -63,7 +63,7 @@ defmodule Mix.Tasks.Test.Watch do
     Mix.Config.read!(Path.expand("config/test.exs"))
     |> Mix.Config.persist
     Mix.Task.run("test")
-    
+
     # TODO(casio): Really?
     # As the configuration will grow indefinitly, we cut it after each run
     # :elixir_config.put(:at_exit, [])
