@@ -36,12 +36,16 @@ defmodule Mix.Tasks.Test.Watch do
   @type fs_details :: {fs_path, any}
   @spec handle_info({pid, fs_event, fs_details}, %{}) :: {:noreply, %{}}
 
-  def handle_info({_pid, {:fs, :file_event}, {path, _event}}, state) do
+  def handle_info({_pid, {:fs, :file_event}, {path, [_, :modified]}}, state) do
     path = to_string(path)
     if M.Path.watching?(path) do
       reload_path(path)
       run_tests(state.args)
     end
+    {:noreply, state}
+  end
+
+  def handle_info({_pid, {:fs, :file_event}, {path, [_, _evt]}}, state) do
     {:noreply, state}
   end
 
