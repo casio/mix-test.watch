@@ -2,7 +2,10 @@ defmodule Mix.Tasks.Test.Watch do
   use Mix.Task
   use GenServer
 
-  alias MixTestWatch, as: M
+  alias MixTestWatch.Command
+  alias MixTestWatch.Message
+  alias MixTestWatch.Path, as: MPath
+  alias MixTestWatch.Shell
 
   @shortdoc """
   Automatically run tests on file changes
@@ -54,7 +57,6 @@ defmodule Mix.Tasks.Test.Watch do
 
   defp run_tests(args) do
     IO.puts "\nRunning tests..."
-
     ["loadpaths", "deps.loadpaths", "test"] |> Enum.map(&Mix.Task.reenable/1)
 
     config = Application.get_all_env(:mix_test_watch)
@@ -72,8 +74,8 @@ defmodule Mix.Tasks.Test.Watch do
     # As the configuration will grow indefinitly, we cut it after each run
     # :elixir_config.put(:at_exit, [])
 
-    # :ok = args |> M.Command.build |> M.Command.exec
-    # flush
+    # :ok = args |> Command.build |> Shell.exec
+    # Message.flush
     # :ok
   end
 
