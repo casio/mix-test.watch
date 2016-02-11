@@ -39,19 +39,14 @@ defmodule Mix.Tasks.Test.Watch do
   @type fs_details :: {fs_path, any}
   @spec handle_info({pid, fs_event, fs_details}, %{}) :: {:noreply, %{}}
 
-  def handle_info({_pid, {:fs, :file_event}, {path, [_, :modified]}}, state) do
+  def handle_info({_pid, {:fs, :file_event}, {path, _event_flags}}, state) do
     path = to_string(path)
-    if M.Path.watching?(path) do
+    if MPath.watching?(path) and File.regular?(path) do
       reload_path(path)
       run_tests(state.args)
     end
     {:noreply, state}
   end
-
-  def handle_info({_pid, {:fs, :file_event}, {path, [_, _evt]}}, state) do
-    {:noreply, state}
-  end
-
 
   @spec run_tests(String.t) :: :ok
 
@@ -64,11 +59,10 @@ defmodule Mix.Tasks.Test.Watch do
       IO.write(IO.ANSI.clear() <> IO.ANSI.home())
     end
 
-    # Reconfigure the :test env (and activate its config)
+    # (Re-)configure the :test env (and activate its config)
     Mix.env(:test)
-    Mix.Config.read!(Path.expand("config/test.exs"))
-    |> Mix.Config.persist
-    Mix.Task.run("test")
+    Mix.Tasks.Loadconfig.run([])
+    Mix.Task.run("test", String.split(args))
 
     # TODO(casio): Really?
     # As the configuration will grow indefinitly, we cut it after each run
@@ -88,14 +82,12 @@ defmodule Mix.Tasks.Test.Watch do
     end
   end
 
-  
   @spec reload_path(String.t) :: :ok
 
   defp reload_path(path) do
     unload_test_files()
     Code.load_file(path)
   end
-
 
   @spec unload_test_files :: :ok
 
